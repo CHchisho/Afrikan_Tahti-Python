@@ -1,3 +1,4 @@
+import json
 import random
 import mysql.connector
 from mysql.connector import Error
@@ -152,6 +153,133 @@ LIMIT %s;
 
 
 
+# Функция для добавления данных в таблицу at_game_manager
+def update_game_manager_in_db(data):
+    connection = get_connection()
+    if connection is None:
+        return {"error": "Failed to connect to database"}
+
+    try:
+        cursor = connection.cursor()
+        # Удаление всех данных из таблицы
+        cursor.execute("TRUNCATE TABLE at_game_manager")
+
+        query = """
+        INSERT INTO at_game_manager (game_status, current_money, current_fuel, currentAirport, visitedAirports, visitedPaths, discoveredPaths, suggestedPaths, diamondFound)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (
+            data['game_status'],
+            data['current_money'],
+            data['current_fuel'],
+            json.dumps(data['currentAirport']),
+            json.dumps(data['visitedAirports']),
+            json.dumps(data['visitedPaths']),
+            json.dumps(data['discoveredPaths']),
+            json.dumps(data['suggestedPaths']),
+            data['diamondFound']
+        ))
+        connection.commit()
+        print("update_game_manager")
+        return {"success": "Data inserted successfully"}
+    except Error as e:
+        return {"error": str(e)}
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+# Функция для добавления данных в таблицу at_game_markers
+def update_game_markers_in_db(markers):
+    connection = get_connection()
+    if not connection:
+        return {'status': 'fail', 'message': 'Database connection failed'}
+
+    try:
+        cursor = connection.cursor()
+
+        # Удаление всех данных из таблицы
+        cursor.execute("TRUNCATE TABLE at_game_markers")
+
+        # Вставка новых данных
+        for marker in markers:
+            icao = marker.get('ICAO')
+            position = marker.get('position')
+            name = marker.get('name')
+            type_ = marker.get('type')
+            discovered = marker.get('discovered', False)
+
+            if icao and position and name and type_:
+                lat_pos, lon_pos = position
+                query = """
+                INSERT INTO at_game_markers (ICAO, lat_pos, lon_pos, name, type, discovered)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    lat_pos = VALUES(lat_pos),
+                    lon_pos = VALUES(lon_pos),
+                    name = VALUES(name),
+                    type = VALUES(type),
+                    discovered = VALUES(discovered)
+                """
+                cursor.execute(query, (icao, lat_pos, lon_pos, name, type_, discovered))
+
+        connection.commit()
+        print("update_game_markers")
+        return {"success": "Data inserted successfully"}
+    except Error as e:
+        return {"error": str(e)}
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+# def update_game_markers_in_db(markers):
+#     connection = get_connection()
+#     if not connection:
+#         return {'status': 'fail', 'message': 'Database connection failed'}
+#
+#     try:
+#         cursor = connection.cursor()
+#         # Удаление всех данных из таблицы
+#         cursor.execute("TRUNCATE TABLE at_game_markers")
+#
+#         for marker in markers:
+#             # Извлекаем значения с помощью .get(), чтобы избежать KeyError
+#             icao = marker.get('ICAO')
+#             position = marker.get('position')
+#             name = marker.get('name')
+#             type_ = marker.get('type')
+#             discovered = marker.get('discovered', False)  # Значение по умолчанию
+#
+#             if icao and position and name and type_:
+#                 position_wkt = f"POINT({position[1]} {position[0]})"
+#                 query = """
+#                 INSERT INTO at_game_markers (ICAO, position, name, type, discovered)
+#                 VALUES (%s, ST_GeomFromText(%s), %s, %s, %s)
+#                 ON DUPLICATE KEY UPDATE
+#                     position = VALUES(position),
+#                     name = VALUES(name),
+#                     type = VALUES(type),
+#                     discovered = VALUES(discovered)
+#                 """
+#                 cursor.execute(query, (icao, position_wkt, name, type_, discovered))
+#             else:
+#                 # Можно добавить логирование или обработку отсутствующих данных
+#                 print(f"Skipping invalid marker: {marker}")
+#
+#         connection.commit()
+#         print("update_game_markers")
+#         return {'status': 'success', 'message': 'Markers updated'}
+#     except Error as e:
+#         return {'status': 'fail', 'message': str(e)}
+#     finally:
+#         if connection.is_connected():
+#             cursor.close()
+#             connection.close()
+
+
+
+
 
 # def test(limit=30, max_connections=3):
 #     """Возвращает данные всех аэропортов, исключая heliport и closed."""
@@ -179,3 +307,87 @@ LIMIT %s;
 #             connection.close()
 #     return []
 # test()
+
+
+# Создание кастомных таблиц
+# def create_tables():
+#     connection = None
+#     try:
+#         connection = mysql.connector.connect(**config)
+#         if connection.is_connected():
+#             cursor = connection.cursor()
+#
+#             # SQL запросы для создания таблиц
+#             create_at_game_manager = """
+#             CREATE TABLE IF NOT EXISTS at_game_manager (
+#                 id INT AUTO_INCREMENT PRIMARY KEY,
+#                 game_status VARCHAR(255),
+#                 current_money VARCHAR(255),
+#                 current_fuel VARCHAR(255),
+#                 currentAirport JSON,
+#                 visitedAirports JSON,
+#                 visitedPaths JSON,
+#                 discoveredPaths JSON,
+#                 suggestedPaths JSON,
+#                 diamondFound BOOLEAN
+#             );
+#             """
+#
+#             create_at_game_markers = """
+#             CREATE TABLE IF NOT EXISTS at_game_markers (
+#                 id INT AUTO_INCREMENT PRIMARY KEY,
+#                 ICAO VARCHAR(10),
+#                 position JSON,
+#                 name VARCHAR(255),
+#                 type VARCHAR(50),
+#                 discovered BOOLEAN
+#             );
+#             """
+#
+#             # Выполнение запросов
+#             cursor.execute(create_at_game_manager)
+#             cursor.execute(create_at_game_markers)
+#
+#             connection.commit()
+#             print("Tables created successfully")
+#
+#     except Error as e:
+#         print(f"Error while connecting to MySQL: {e}")
+#     finally:
+#         if connection and connection.is_connected():
+#             cursor.close()
+#             connection.close()
+
+# create_tables()
+
+
+# Обновление кастомных таблиц
+# def create_tables():
+#     connection = None
+#     try:
+#         connection = mysql.connector.connect(**config)
+#         if connection.is_connected():
+#             cursor = connection.cursor()
+#
+#             # SQL запросы для создания таблиц
+#             create_at_game_manager = """
+# ALTER TABLE at_game_markers
+# DROP COLUMN position,
+# ADD COLUMN lat_pos DOUBLE NOT NULL,
+# ADD COLUMN lon_pos DOUBLE NOT NULL;
+#             """
+#
+#             # Выполнение запросов
+#             cursor.execute(create_at_game_manager)
+#
+#             connection.commit()
+#             print("Tables created successfully")
+#
+#     except Error as e:
+#         print(f"Error while connecting to MySQL: {e}")
+#     finally:
+#         if connection and connection.is_connected():
+#             cursor.close()
+#             connection.close()
+#
+# create_tables()
