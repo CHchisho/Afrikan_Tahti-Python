@@ -24,50 +24,66 @@ def get_connection():
 
 
 
-def fetch_airports(limit=30, max_connections=3):
+def fetch_airports(limit=20, max_connections=3):
     """Возвращает данные всех аэропортов, исключая heliport и closed."""
     connection = get_connection()
     if connection:
         try:
             cursor = connection.cursor(dictionary=True)
             # SQL-запрос для получения необходимых данных
-            # query = """
-            # SELECT id, ident AS ICAO, type, name, latitude_deg, longitude_deg
-            # FROM airport
-            # WHERE type NOT IN ('heliport', 'closed')
-            # AND iso_country IN (
-            #     'AL', 'AD', 'AM', 'AT', 'AZ', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ',
-            #     'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ',
-            #     'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO',
-            #     'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'TR',
-            #     'UA', 'GB', 'VA'
-            # )
-            # LIMIT %s
-            # """
             query = """
-SELECT 
-    id, 
-    ident AS ICAO, 
-    type, 
-    name, 
-    latitude_deg, 
-    longitude_deg, 
-    iso_country
-FROM 
-    airport
-WHERE 
-    type NOT IN ('heliport', 'closed', 'seaplane_base', 'balloonport')
-    AND iso_country IN (
-        'AL', 'AD', 'AM', 'AT', 'AZ', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 
-        'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ', 
-        'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO', 
-        'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'TR', 
-        'UA', 'GB', 'VA'
-    )
-GROUP BY 
-    iso_country
-LIMIT %s;
+            SELECT 
+                a.id, 
+                a.ident AS ICAO, 
+                a.type, 
+                a.name, 
+                a.latitude_deg, 
+                a.longitude_deg, 
+                a.iso_country,
+                c.wikipedia_link
+            FROM 
+                airport a
+            JOIN 
+                country c
+            ON 
+                a.iso_country = c.iso_country
+            WHERE 
+                a.type NOT IN ('heliport', 'closed', 'seaplane_base', 'balloonport')
+                AND a.iso_country IN (
+                    'AL', 'AD', 'AM', 'AT', 'AZ', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 
+                    'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ', 
+                    'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO', 
+                    'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'TR', 
+                    'UA', 'GB', 'VA'
+                )
+            GROUP BY 
+                a.iso_country
+            LIMIT %s;
             """
+#             query = """
+# SELECT
+#     id,
+#     ident AS ICAO,
+#     type,
+#     name,
+#     latitude_deg,
+#     longitude_deg,
+#     iso_country
+# FROM
+#     airport
+# WHERE
+#     type NOT IN ('heliport', 'closed', 'seaplane_base', 'balloonport')
+#     AND iso_country IN (
+#         'AL', 'AD', 'AM', 'AT', 'AZ', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ',
+#         'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ',
+#         'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO',
+#         'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'TR',
+#         'UA', 'GB', 'VA'
+#     )
+# GROUP BY
+#     iso_country
+# LIMIT %s;
+#             """
             cursor.execute(query, (limit,))
             airports = cursor.fetchall()
 
@@ -111,14 +127,44 @@ LIMIT %s;
                     "name": airport["name"],
                     "type": airport["type"],
                     "discovered": False,
+                    "iso_country": airport["iso_country"],
+                    "wikipedia_link": airport["wikipedia_link"],
                 }
                 for airport in airports
             ]
 
 
+            # icao_list = [airport["ICAO"] for airport in formatted_airports]
+            # # icao_connections = []
+            # icao_connections = set()
+            # for icao in icao_list:
+            #     num_connections = random.randint(2, max_connections)
+            #     possible_connections = [other_icao for other_icao in icao_list if other_icao != icao]
+            #     random_connections = random.sample(possible_connections,
+            #                                        min(num_connections, len(possible_connections)))
+            #
+            #     # Получение текущего аэропорта
+            #     current_airport = next(airport for airport in formatted_airports if airport["ICAO"] == icao)
+            #     current_position = current_airport["position"]
+            #
+            #     for conn in random_connections:
+            #         connected_airport = next(airport for airport in formatted_airports if airport["ICAO"] == conn)
+            #         connected_position = connected_airport["position"]
+            #
+            #         # Вычисление расстояния между аэропортами
+            #         distance = geodesic(current_position, connected_position).kilometers
+            #
+            #         # Добавление соединения с расстоянием
+            #         icao_connections.add((icao, conn, int(distance)))
+            #         # icao_connections.add((conn, icao, int(distance)))
+            # print("connections:",len(icao_connections), icao_connections)
+            # icao_connections = list(icao_connections)
+
+
             icao_list = [airport["ICAO"] for airport in formatted_airports]
-            # icao_connections = []
-            icao_connections = set()
+            unique_connections_set = set()
+            unique_connections = []
+
             for icao in icao_list:
                 num_connections = random.randint(2, max_connections)
                 possible_connections = [other_icao for other_icao in icao_list if other_icao != icao]
@@ -133,22 +179,29 @@ LIMIT %s;
                     connected_airport = next(airport for airport in formatted_airports if airport["ICAO"] == conn)
                     connected_position = connected_airport["position"]
 
-                    # Вычисление расстояния между аэропортами
+                    # Расстояния между аэропортами
                     distance = geodesic(current_position, connected_position).kilometers
+                    # Создание кортежа соединения с расстоянием
+                    icao_connection = (icao, conn, int(distance))
+                    # Сортируем первые два элемента и создаем кортеж
+                    ordered_connection = tuple(sorted(icao_connection[:2])) + (icao_connection[2],)
 
-                    # Добавление соединения с расстоянием
-                    icao_connections.add((icao, conn, int(distance)))
-                    # icao_connections.add((conn, icao, int(distance)))
-            print("connections:",len(icao_connections), icao_connections)
-            icao_connections = list(icao_connections)
+                    # Если комбинации еще нет в множестве
+                    if ordered_connection not in unique_connections_set:
+                        unique_connections_set.add(ordered_connection)
+                        unique_connections.append(icao_connection)
 
-            return {"data":formatted_airports,"icao_connections":icao_connections}
+            print("connections:", len(unique_connections), unique_connections)
+
+
+            return {"data":formatted_airports,"icao_connections":unique_connections}
         except Error as e:
             print(f"Error fetching airports: {e}")
             return []
         finally:
-            cursor.close()
-            connection.close()
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
     return []
 
 
@@ -165,8 +218,8 @@ def update_game_manager_in_db(data):
         cursor.execute("TRUNCATE TABLE at_game_manager")
 
         query = """
-        INSERT INTO at_game_manager (game_status, current_money, current_fuel, currentAirport, visitedAirports, visitedPaths, discoveredPaths, suggestedPaths, diamondFound)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO at_game_manager (game_status, current_money, current_fuel, currentAirport, visitedAirports, visitedPaths, discoveredPaths, suggestedPaths, diamondFound, game_user_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['game_status'],
@@ -177,7 +230,8 @@ def update_game_manager_in_db(data):
             json.dumps(data['visitedPaths']),
             json.dumps(data['discoveredPaths']),
             json.dumps(data['suggestedPaths']),
-            data['diamondFound']
+            data['diamondFound'],
+            data['game_user_name'],
         ))
         connection.commit()
         print("update_game_manager")
@@ -382,6 +436,35 @@ def update_game_markers_in_db(markers):
 #
 #             connection.commit()
 #             print("Tables created successfully")
+#
+#     except Error as e:
+#         print(f"Error while connecting to MySQL: {e}")
+#     finally:
+#         if connection and connection.is_connected():
+#             cursor.close()
+#             connection.close()
+#
+# create_tables()
+
+# Обновление кастомных таблиц
+# def create_tables():
+#     connection = None
+#     try:
+#         connection = mysql.connector.connect(**config)
+#         if connection.is_connected():
+#             cursor = connection.cursor()
+#
+#             # SQL запрос для добавления нового столбца
+#             create_at_game_manager = """
+#             ALTER TABLE at_game_manager
+#             ADD COLUMN game_user_name VARCHAR(255) NOT NULL
+#             """
+#
+#             # Выполнение запроса
+#             cursor.execute(create_at_game_manager)
+#
+#             connection.commit()
+#             print("Column added successfully")
 #
 #     except Error as e:
 #         print(f"Error while connecting to MySQL: {e}")
