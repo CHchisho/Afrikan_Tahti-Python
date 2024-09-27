@@ -5,26 +5,17 @@ from db import fetch_airports, update_game_manager_in_db, update_game_markers_in
 app = Flask(__name__)
 CORS(app)
 
-# Пример данных маркеров
-# markers_data = {
-#     "data": [
-#         {"ICAO": "1", "position": [51.505, -0.09], "name": "London", "type": "red"},
-#         {"ICAO": "2", "position": [48.8566, 2.3522], "name": "Paris", "type": "diamond"},
-#         {"ICAO": "3", "position": [40.7128, -74.0060], "name": "New York", "type": "topaz"},
-#     ]
-# }
 
+# Endpoint for the primary generation of airports
 @app.route('/get_markers', methods=['GET'])
 def get_markers():
     airports = fetch_airports()
-    print(len(airports))
-    print((airports))
+    print(airports)
     return jsonify(airports)
-    # return jsonify(markers_data)
 
 
 
-# Эндпоинт для обновления таблицы at_game_manager
+# Endpoint for updating the at_game_manager table
 @app.route('/update_game_manager', methods=['POST'])
 def update_game_manager_endpoint():
     data = request.json
@@ -32,15 +23,12 @@ def update_game_manager_endpoint():
     return jsonify(result)
 
 
+# Endpoint for updating the at_game_markers table
 @app.route('/update_game_markers', methods=['POST'])
 def update_game_markers():
     data = request.json
     result = update_game_markers_in_db(data['markers'])
     return jsonify(result)
-    # if 'markers' in data:
-    #     result = update_game_markers_in_db(data['markers'])
-    #     return jsonify(result)
-    # return jsonify({'status': 'fail', 'message': 'Invalid data'}), 400
 
 
 if __name__ == '__main__':
